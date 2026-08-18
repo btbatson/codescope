@@ -5,7 +5,7 @@
   "bin": {
     "codescope": "bin/codescope.js"
   },
-  "main": "bin/codescope.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node bin/codescope.js"
   },
