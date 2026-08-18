@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CodeScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="topbar">
+    <div class="topbar-left">
+      <div class="project-switcher-wrap hidden" id="projectSwitcherWrap">
+        <button id="projectSwitcherBtn" class="topbar-btn">
+          <span id="projectSwitcherLabel">Project</span> <span class="caret">&#9662;</span>
+        </button>
+        <div id="projectSwitcherMenu" class="menu hidden"></div>
+      </div>
+      <div id="breadcrumb" class="breadcrumb"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <input id="searchInput" class="search-input" type="text" placeholder="Search files… (press /)">
+        <div id="searchResults" class="search-results hidden"></div>
+      </div>
+      <div class="appearance-wrap">
+        <button id="appearanceBtn" class="topbar-btn">
+          <span id="appearanceLabel">Appearance</span> <span class="caret">&#9662;</span>
+        </button>
+        <div id="appearanceMenu" class="menu hidden">
+          <button data-theme="light">Light</button>
+          <button data-theme="dark">Dark</button>
+          <button data-theme="system">System</button>
+        </div>
+      </div>
+      <button id="rescanBtn" class="topbar-btn" title="Re-scan the project">Rescan</button>
+      <button id="settingsBtn" class="topbar-btn" title="AI settings">
+        Settings <span id="settingsDot" class="settings-dot hidden"></span>
+      </button>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Settings</div>
+        <button id="settingsClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Add an Anthropic API key to have the AI Analysis Engine generate summaries with Claude instead of the built-in local engine. The key is stored only on this machine, in <code>~/.codescope/config.json</code>, and is sent only to Anthropic's API.
+        </p>
+        <div id="settingsStatus" class="settings-status"></div>
+        <label class="modal-label" for="apiKeyInput">Anthropic API key</label>
+        <input id="apiKeyInput" class="modal-input" type="password" placeholder="sk-ant-...">
+        <div class="modal-actions">
+          <button id="apiKeySave" class="ai-btn">Save key</button>
+          <button id="apiKeyRemove" class="modal-btn-ghost hidden">Remove key</button>
+        </div>
+
+        <hr class="divider">
+
+        <p class="modal-desc">
+          Add a webhook URL (Slack incoming webhook or any endpoint that accepts JSON) to get notified when a rescan finds new vulnerabilities or secrets compared to the previous scan.
+        </p>
+        <div id="webhookStatus" class="settings-status"></div>
+        <label class="modal-label" for="webhookInput">Webhook URL</label>
+        <input id="webhookInput" class="modal-input" type="text" placeholder="https://hooks.slack.com/services/...">
+        <div class="modal-actions">
+          <button id="webhookSave" class="ai-btn">Save webhook</button>
+          <button id="webhookRemove" class="modal-btn-ghost hidden">Remove webhook</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="securityModal" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <div id="securityModalTitle" class="modal-title">Security Report</div>
+        <button id="securityModalClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="securityModalBody" class="modal-scroll"></div>
+        <div class="modal-actions">
+          <button id="securityCopyBtn" class="ai-btn">Copy report as text</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="graphArea">
+    <svg id="graphSvg" width="100%" height="100%">
+      <g id="viewport"></g>
+    </svg>
+    <div id="graphHint" class="graph-hint">Click a folder to explore. Click a file for details.</div>
+  </main>
+
+  <aside id="panel">
+    <div class="panel-header">
+      <button id="panelCollapse" class="panel-collapse">&rsaquo;</button>
+      <div class="panel-icon" id="panelIcon"></div>
+      <div class="panel-title">
+        <div id="panelName" class="panel-name">&nbsp;</div>
+        <div class="panel-badges" id="panelBadges"></div>
+      </div>
+    </div>
+
+    <div class="panel-tabs">
+      <button class="tab-btn active" data-tab="details">Details</button>
+      <button class="tab-btn" data-tab="analysis">Analysis</button>
+    </div>
+
+    <div class="panel-body">
+      <div id="tab-details" class="tab-pane active"></div>
+      <div id="tab-analysis" class="tab-pane"></div>
+    </div>
+  </aside>
+
+  <div id="legend" class="legend">
+    <div class="legend-title">Legend</div>
+    <div class="legend-row"><span class="legend-dot folder"></span>Folder</div>
+    <div class="legend-row"><span class="legend-dot file"></span>File</div>
+  </div>
+
+  <div id="credits" class="credits">
+    <a class="credits-row" href="https://batsonlabs.com/" target="_blank" rel="noopener noreferrer">
+      <svg class="credits-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Titus Batson
+    </a>
+    <a class="credits-row" href="https://github.com/titusbatson" target="_blank" rel="noopener noreferrer">
+      <svg class="credits-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      GitHub
+    </a>
+    <a class="credits-row" href="https://buymeacoffee.com/titusbatson" target="_blank" rel="noopener noreferrer">
+      <svg class="credits-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      Buy me a coffee
+    </a>
+  </div>
+
+  <div id="loading" class="loading">Scanning project&hellip;</div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

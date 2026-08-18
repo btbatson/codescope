@@ -1,0 +1,16 @@
+{
+  "name": "codescope",
+  "version": "1.0.0",
+  "description": "Scan a codebase, map its contents by size/type, and audit npm dependencies for security and freshness.",
+  "bin": {
+    "codescope": "bin/codescope.js"
+  },
+  "main": "bin/codescope.js",
+  "scripts": {
+    "start": "node bin/codescope.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "ignore": "^7.0.6"
+  }
+}
