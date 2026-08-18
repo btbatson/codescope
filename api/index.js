@@ -18,9 +18,13 @@ try {
   // which fetches github.com repos live via GitHub's API/CDN (no `git`
   // binary or persistent disk required) since repoClone.js falls back to
   // that automatically whenever a git executable isn't available.
-  const projects = [];
+  //
+  // perSession: true keeps each visitor's added repo(s) private to them (via
+  // an anonymous cookie) instead of sharing one global project list across
+  // everyone hitting the same warm serverless container - every visitor
+  // always starts on the "add a repo" welcome screen.
   const publicDir = path.join(__dirname, '..', 'public');
-  handler = createHandler(projects, publicDir);
+  handler = createHandler(null, publicDir, { perSession: true });
 } catch (err) {
   bootError = err;
   console.error('CodeScope function failed to initialize:', err);

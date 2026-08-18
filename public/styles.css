@@ -408,6 +408,8 @@ table.mini tr.row-sev-flagged { background: color-mix(in srgb, #dc2626 7%, trans
 }
 .credits-row:hover { color: var(--accent); background: var(--chip-bg); }
 .credits-icon { width: 13px; height: 13px; flex-shrink: 0; }
+.modal-credits { display: flex; gap: 6px; flex-wrap: wrap; }
+.modal-credits .credits-row { font-size: 0.76rem; }
 
 .loading {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;

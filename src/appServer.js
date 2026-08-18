@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { scan } = require('./scanner');
 const { runSecurityCheck } = require('./security');
@@ -94,15 +95,53 @@ function openBrowser(url) {
   }
 }
 
-function createHandler(projects, publicDir) {
-  function getProject(url) {
-    if (!projects.length) return null;
-    const id = url.searchParams.get('project') || projects[0].id;
-    return projects.find((p) => p.id === id) || projects[0];
-  }
+const SESSION_COOKIE = 'cs_sid';
+const MAX_SESSIONS = 200; // just an in-memory demo cache, not real persistence - keep it bounded
+const sessionProjects = new Map();
 
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach((pair) => {
+    const idx = pair.indexOf('=');
+    if (idx === -1) return;
+    const key = pair.slice(0, idx).trim();
+    const value = pair.slice(idx + 1).trim();
+    if (key) out[key] = decodeURIComponent(value);
+  });
+  return out;
+}
+
+// Each visitor to the hosted deployment gets their own private, in-memory
+// project list, keyed by an anonymous session cookie - otherwise, since a
+// warm serverless container can serve multiple visitors, one person adding
+// a repo could leak into a stranger's view of the app. Every session starts
+// empty, so the hosted app always opens on the "add a repo" welcome screen.
+function getSessionProjects(req, res) {
+  const cookies = parseCookies(req);
+  let sid = cookies[SESSION_COOKIE];
+  if (!sid || !sessionProjects.has(sid)) {
+    sid = crypto.randomUUID();
+    sessionProjects.set(sid, []);
+    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+    if (sessionProjects.size > MAX_SESSIONS) {
+      sessionProjects.delete(sessionProjects.keys().next().value);
+    }
+  }
+  return sessionProjects.get(sid);
+}
+
+function getProject(projects, url) {
+  if (!projects.length) return null;
+  const id = url.searchParams.get('project') || projects[0].id;
+  return projects.find((p) => p.id === id) || projects[0];
+}
+
+function createHandler(projectsOrOptions, publicDir, { perSession = false } = {}) {
   return function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
+    const projects = perSession ? getSessionProjects(req, res) : projectsOrOptions;
 
     if (url.pathname === '/api/projects') {
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
@@ -148,7 +187,7 @@ function createHandler(projects, publicDir) {
     }
 
     if (url.pathname === '/api/data') {
-      const project = getProject(url);
+      const project = getProject(projects, url);
       if (!project) {
         res.writeHead(200, { 'Content-Type': MIME['.json'] });
         res.end(JSON.stringify({ empty: true }));
@@ -160,7 +199,7 @@ function createHandler(projects, publicDir) {
     }
 
     function requireProject() {
-      const project = getProject(url);
+      const project = getProject(projects, url);
       if (!project) {
         res.writeHead(404, { 'Content-Type': MIME['.json'] });
         res.end(JSON.stringify({ error: 'No project selected yet - add a repository first.' }));
