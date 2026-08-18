@@ -86,12 +86,15 @@
       <div class="modal-body">
         <div class="panel-tabs">
           <button class="tab-btn active" data-addrepo-tab="github">Analyze from GitHub</button>
-          <button class="tab-btn" data-addrepo-tab="local">Run on your device</button>
+          <button class="tab-btn" data-addrepo-tab="local">Run on your device <span class="chip addrepo-recommended">Recommended</span></button>
         </div>
 
         <div id="addRepoTabGithub" class="tab-pane active">
           <p class="modal-desc">
             Paste a git repository URL (GitHub, GitLab, or any git remote) and CodeScope scans it just like a local project - no need to clone it yourself first. When a local <code>git</code> binary isn't available (e.g. this hosted demo), github.com repos are fetched live through GitHub's API instead, with no clone at all.
+          </p>
+          <p class="modal-desc">
+            Live no-clone analysis has a 4,000-file limit per repository, since every file is fetched individually over the network. Larger repositories will fail to analyze here - for those (or for private repos), use "Run on your device" instead.
           </p>
           <div id="addRepoStatus" class="settings-status"></div>
           <label class="modal-label" for="addRepoInput">Repository URL</label>

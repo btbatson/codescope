@@ -152,8 +152,13 @@ async function cloneOrUpdateRepo(url) {
         recordOrigin(dir, url, 'live');
         return { path: result.path, name: result.name || name, mode: 'live' };
       } catch (fallbackErr) {
+        if (fallbackErr.code === 'REPO_TOO_LARGE') {
+          const tooLargeErr = new Error(`${fallbackErr.message} Try "Run on your device" instead - it has no such limit.`);
+          tooLargeErr.code = 'REPO_TOO_LARGE';
+          throw tooLargeErr;
+        }
         const cloneErr = new Error(`Could not clone or fetch that repository: ${fallbackErr.message}`);
-        cloneErr.code = fallbackErr.code === 'REPO_TOO_LARGE' ? 'REPO_TOO_LARGE' : 'CLONE_FAILED';
+        cloneErr.code = 'CLONE_FAILED';
         throw cloneErr;
       }
     }
