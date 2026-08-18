@@ -132,16 +132,26 @@ function getSessionProjects(req, res) {
   return sessionProjects.get(sid);
 }
 
-function getProject(projects, url) {
+// requireExplicit is used for the hosted (per-session) deployment: without
+// it, a returning visitor whose cookie still has a project from earlier in
+// the day would land back inside it on every fresh page load instead of the
+// "add a repo" welcome screen. With it, only an *explicit* ?project=<id> -
+// sent once the client already knows the id, e.g. right after adding a
+// repo, or when switching projects - resolves to real data; a bare initial
+// load always comes back empty. The local CLI (requireExplicit: false)
+// keeps its normal "just show me my project" default.
+function getProject(projects, url, { requireExplicit = false } = {}) {
   if (!projects.length) return null;
-  const id = url.searchParams.get('project') || projects[0].id;
-  return projects.find((p) => p.id === id) || projects[0];
+  const id = url.searchParams.get('project');
+  if (!id) return requireExplicit ? null : projects[0];
+  return projects.find((p) => p.id === id) || (requireExplicit ? null : projects[0]);
 }
 
 function createHandler(projectsOrOptions, publicDir, { perSession = false } = {}) {
   return function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
     const projects = perSession ? getSessionProjects(req, res) : projectsOrOptions;
+    const projectOpts = { requireExplicit: perSession };
 
     if (url.pathname === '/api/projects') {
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
@@ -187,7 +197,7 @@ function createHandler(projectsOrOptions, publicDir, { perSession = false } = {}
     }
 
     if (url.pathname === '/api/data') {
-      const project = getProject(projects, url);
+      const project = getProject(projects, url, projectOpts);
       if (!project) {
         res.writeHead(200, { 'Content-Type': MIME['.json'] });
         res.end(JSON.stringify({ empty: true }));
@@ -199,7 +209,7 @@ function createHandler(projectsOrOptions, publicDir, { perSession = false } = {}
     }
 
     function requireProject() {
-      const project = getProject(projects, url);
+      const project = getProject(projects, url, projectOpts);
       if (!project) {
         res.writeHead(404, { 'Content-Type': MIME['.json'] });
         res.end(JSON.stringify({ error: 'No project selected yet - add a repository first.' }));
