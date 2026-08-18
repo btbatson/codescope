@@ -144,7 +144,26 @@ Options:
   });
 }
 
-main().catch((err) => {
-  console.error(err.message);
-  process.exit(1);
-});
+// Only run when this file is executed directly (`node bin/codescope.js` or
+// the installed `codescope` command) - never as a side effect of merely
+// being require()'d as a module. Vercel's build/runtime was observed
+// executing this file directly in production, starting a real listening
+// HTTP server that scanned its own deployed function directory (cwd
+// defaults to '.', which resolves to /var/task in that environment) and
+// serving that to every visitor, completely bypassing api/index.js.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}
+
+// A safe fallback export in case something still ends up requiring this
+// file as a function target instead of running it directly - fails
+// harmlessly rather than crashing or (as observed) silently starting a
+// real server. api/index.js is the actual deployable entry point.
+module.exports = function bin(req, res) {
+  res.statusCode = 404;
+  res.setHeader('Content-Type', 'text/plain');
+  res.end('bin/codescope.js is the CLI entry point, not a deployable function - see api/index.js.');
+};
