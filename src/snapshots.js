@@ -1,9 +1,9 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { stateRoot } = require('./stateDir');
 
-const SNAPSHOTS_ROOT = path.join(os.homedir(), '.codescope', 'snapshots');
+const SNAPSHOTS_ROOT = path.join(stateRoot(), 'snapshots');
 const MAX_SNAPSHOTS = 30;
 
 function projectDir(targetDir) {

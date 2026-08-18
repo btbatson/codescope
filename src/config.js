@@ -1,8 +1,8 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { stateRoot } = require('./stateDir');
 
-const CONFIG_DIR = path.join(os.homedir(), '.codescope');
+const CONFIG_DIR = stateRoot();
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
 
 // Tracks whether the currently-active ANTHROPIC_API_KEY came from our config

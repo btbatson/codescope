@@ -36,6 +36,7 @@
         </div>
       </div>
       <button id="rescanBtn" class="topbar-btn" title="Re-scan the project">Rescan</button>
+      <button id="addRepoBtn" class="topbar-btn" title="Clone and analyze a remote repository">Add repo</button>
       <button id="settingsBtn" class="topbar-btn" title="AI settings">
         Settings <span id="settingsDot" class="settings-dot hidden"></span>
       </button>
@@ -71,6 +72,26 @@
         <div class="modal-actions">
           <button id="webhookSave" class="ai-btn">Save webhook</button>
           <button id="webhookRemove" class="modal-btn-ghost hidden">Remove webhook</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="addRepoModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Add Repository</div>
+        <button id="addRepoClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Paste a git repository URL (GitHub, GitLab, or any git remote) and CodeScope scans it just like a local project - no need to clone it yourself first. When a local <code>git</code> binary isn't available (e.g. this hosted demo), github.com repos are fetched live through GitHub's API instead, with no clone at all.
+        </p>
+        <div id="addRepoStatus" class="settings-status"></div>
+        <label class="modal-label" for="addRepoInput">Repository URL</label>
+        <input id="addRepoInput" class="modal-input" type="text" placeholder="https://github.com/owner/repo">
+        <div class="modal-actions">
+          <button id="addRepoSubmit" class="ai-btn">Clone &amp; analyze</button>
         </div>
       </div>
     </div>

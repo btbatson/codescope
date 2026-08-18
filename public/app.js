@@ -17,6 +17,7 @@
   let currentNodes = [];
   let animHandle = null;
   let currentProjectId = null;
+  let aiKeyConfigured = false;
 
   function apiUrl(pathAndQuery) {
     if (!currentProjectId) return pathAndQuery;
@@ -136,6 +137,13 @@
   async function loadProjectData() {
     const res = await fetch(apiUrl('/api/data'));
     data = await res.json();
+    if (data.empty) {
+      loadingEl.classList.add('hidden');
+      showEmptyState();
+      return;
+    }
+    const hint = document.getElementById('graphHint');
+    if (hint) hint.textContent = 'Click a folder to explore. Click a file for details.';
     stack = [data.scanResult.tree];
     selected = data.scanResult.tree;
     searchIndex = buildSearchIndex(data.scanResult.tree);
@@ -144,38 +152,63 @@
     render();
   }
 
+  // Shown on a fresh no-local-project deployment (e.g. the hosted Vercel
+  // demo) before any repo has been added - points the user at "Add repo"
+  // instead of leaving a blank graph.
+  function showEmptyState() {
+    const hint = document.getElementById('graphHint');
+    if (hint) {
+      hint.textContent = 'No project loaded yet - add a repository to analyze it.';
+      hint.classList.remove('hidden');
+    }
+    const addRepoModal = document.getElementById('addRepoModal');
+    if (addRepoModal) addRepoModal.classList.remove('hidden');
+  }
+
   // ---------- project switcher ----------
   const projectSwitcherWrap = document.getElementById('projectSwitcherWrap');
   const projectSwitcherBtn = document.getElementById('projectSwitcherBtn');
   const projectSwitcherLabel = document.getElementById('projectSwitcherLabel');
   const projectSwitcherMenu = document.getElementById('projectSwitcherMenu');
 
-  async function loadProjects() {
-    const res = await fetch('/api/projects');
-    const projects = await res.json();
-    currentProjectId = projects[0].id;
+  let knownProjects = [];
+  let switcherWired = false;
 
-    if (projects.length > 1) {
-      projectSwitcherWrap.classList.remove('hidden');
-      const renderMenu = () => {
-        projectSwitcherLabel.textContent = projects.find((p) => p.id === currentProjectId).name;
-        projectSwitcherMenu.innerHTML = '';
-        projects.forEach((p) => {
-          const btn = document.createElement('button');
-          btn.textContent = p.name;
-          btn.className = p.id === currentProjectId ? 'active' : '';
-          btn.addEventListener('click', async () => {
-            if (p.id === currentProjectId) { projectSwitcherMenu.classList.add('hidden'); return; }
-            currentProjectId = p.id;
-            projectSwitcherMenu.classList.add('hidden');
-            loadingEl.classList.remove('hidden');
-            await loadProjectData();
-            renderMenu();
-          });
-          projectSwitcherMenu.appendChild(btn);
-        });
-      };
-      renderMenu();
+  function renderProjectMenu() {
+    projectSwitcherLabel.textContent = (knownProjects.find((p) => p.id === currentProjectId) || {}).name || 'Project';
+    projectSwitcherMenu.innerHTML = '';
+    knownProjects.forEach((p) => {
+      const btn = document.createElement('button');
+      btn.textContent = p.mode === 'live' ? `${p.name} (live)` : p.name;
+      btn.title = p.mode === 'live' ? 'Fetched live from GitHub - no local clone' : '';
+      btn.className = p.id === currentProjectId ? 'active' : '';
+      btn.addEventListener('click', async () => {
+        if (p.id === currentProjectId) { projectSwitcherMenu.classList.add('hidden'); return; }
+        currentProjectId = p.id;
+        projectSwitcherMenu.classList.add('hidden');
+        loadingEl.classList.remove('hidden');
+        await loadProjectData();
+        renderProjectMenu();
+      });
+      projectSwitcherMenu.appendChild(btn);
+    });
+  }
+
+  // Re-fetches the project list. Safe to call repeatedly (e.g. after adding
+  // a repo) - doesn't reset the current selection unless told to, and only
+  // wires up the switcher's own toggle/outside-click listeners once.
+  async function loadProjects({ selectId } = {}) {
+    const res = await fetch('/api/projects');
+    knownProjects = await res.json();
+
+    if (selectId) currentProjectId = selectId;
+    else if (!currentProjectId && knownProjects.length) currentProjectId = knownProjects[0].id;
+
+    projectSwitcherWrap.classList.toggle('hidden', knownProjects.length <= 1);
+    renderProjectMenu();
+
+    if (!switcherWired) {
+      switcherWired = true;
       projectSwitcherBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         projectSwitcherMenu.classList.toggle('hidden');
@@ -219,6 +252,10 @@
   const webhookRemove = document.getElementById('webhookRemove');
 
   function renderSettingsStatus(status) {
+    const keyStateChanged = aiKeyConfigured !== status.hasApiKey;
+    aiKeyConfigured = status.hasApiKey;
+    if (keyStateChanged && selected) renderDetails(selected);
+
     settingsDot.classList.toggle('hidden', !status.hasApiKey && !status.hasWebhook);
     apiKeyRemove.classList.toggle('hidden', !status.hasApiKey);
     settingsStatus.classList.remove('error');
@@ -962,6 +999,18 @@
     title.className = 'section-title';
     title.textContent = 'AI Analysis Engine';
     pane.appendChild(title);
+
+    if (!aiKeyConfigured) {
+      const notice = document.createElement('div');
+      notice.className = 'ai-key-notice';
+      notice.innerHTML = 'No Claude API key configured — summaries use the built-in local engine. <a href="#" id="aiKeyNoticeLink">Add a key in Settings</a> for deeper, code-aware analysis.';
+      pane.appendChild(notice);
+      const link = notice.querySelector('#aiKeyNoticeLink');
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('settingsBtn').click();
+      });
+    }
 
     const wrap = document.createElement('div');
     wrap.className = 'ai-wrap';
@@ -1800,6 +1849,57 @@
   });
   securityModal.addEventListener('click', (e) => {
     if (e.target === securityModal) securityModal.classList.add('hidden');
+  });
+
+  // ---------- add repo modal ----------
+  const addRepoModal = document.getElementById('addRepoModal');
+  const addRepoInput = document.getElementById('addRepoInput');
+  const addRepoStatus = document.getElementById('addRepoStatus');
+  const addRepoSubmit = document.getElementById('addRepoSubmit');
+
+  document.getElementById('addRepoBtn').addEventListener('click', () => {
+    addRepoModal.classList.remove('hidden');
+    addRepoInput.value = '';
+    addRepoStatus.textContent = '';
+    addRepoStatus.className = 'settings-status';
+    addRepoInput.focus();
+  });
+  document.getElementById('addRepoClose').addEventListener('click', () => {
+    addRepoModal.classList.add('hidden');
+  });
+  addRepoModal.addEventListener('click', (e) => {
+    if (e.target === addRepoModal) addRepoModal.classList.add('hidden');
+  });
+
+  addRepoSubmit.addEventListener('click', async () => {
+    const repoUrl = addRepoInput.value.trim();
+    if (!repoUrl) return;
+    addRepoSubmit.disabled = true;
+    addRepoSubmit.textContent = 'Cloning…';
+    addRepoStatus.textContent = 'Cloning and scanning - this can take a moment for larger repos.';
+    addRepoStatus.className = 'settings-status';
+    try {
+      const res = await fetch('/api/projects/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: repoUrl }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        addRepoStatus.textContent = json.error || 'Could not add that repository.';
+        addRepoStatus.className = 'settings-status error';
+      } else {
+        addRepoModal.classList.add('hidden');
+        loadingEl.classList.remove('hidden');
+        await loadProjects({ selectId: json.id });
+        await loadProjectData();
+      }
+    } catch {
+      addRepoStatus.textContent = 'Could not reach the server to add that repository.';
+      addRepoStatus.className = 'settings-status error';
+    }
+    addRepoSubmit.disabled = false;
+    addRepoSubmit.textContent = 'Clone & analyze';
   });
 
   function buildSecurityReportText(label, eco) {

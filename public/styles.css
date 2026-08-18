@@ -53,6 +53,20 @@
 
 * { box-sizing: border-box; }
 
+/* Shared frosted-glass treatment for every floating surface (topbar, side
+   panel, dropdowns, modals, legend, credits) - translucent panel-bg plus a
+   backdrop blur so content behind it stays faintly visible. */
+.glass {
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* Buttons/inputs/selects don't inherit font-family from body by default in
+   most browsers - without this every control on the page silently falls
+   back to the OS UI font instead of the site's chosen font. */
+button, input, select, textarea { font: inherit; color: inherit; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -69,7 +83,7 @@ body {
 
 #topbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 12px; left: 12px; right: 12px;
   height: 56px;
   display: flex;
   align-items: center;
@@ -78,7 +92,9 @@ body {
   background: color-mix(in srgb, var(--panel-bg) 62%, transparent);
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
   z-index: 30;
 }
 .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; }
@@ -117,7 +133,9 @@ body {
 .search-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .search-results {
   position: absolute; top: 40px; left: 0; width: 320px; max-height: 360px; overflow-y: auto;
-  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--panel-border); border-radius: 10px;
   box-shadow: var(--shadow); z-index: 45;
 }
 .search-results.hidden { display: none; }
@@ -134,7 +152,9 @@ body {
 .appearance-wrap { position: relative; }
 .menu {
   position: absolute; top: 42px; right: 0;
-  background: var(--panel-bg); border: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--panel-border);
   border-radius: 10px; box-shadow: var(--shadow); overflow: hidden;
   min-width: 140px; z-index: 40;
 }
@@ -148,7 +168,7 @@ body {
 
 #graphArea {
   position: absolute;
-  top: 56px; left: 0; right: 420px; bottom: 0;
+  top: 68px; left: 0; right: 420px; bottom: 0;
   overflow: hidden;
 }
 #graphSvg { display: block; cursor: grab; }
@@ -206,9 +226,11 @@ body {
 
 #panel {
   position: fixed;
-  top: 72px; right: 16px; bottom: 16px;
+  top: 84px; right: 16px; bottom: 16px;
   width: 420px;
-  background: var(--panel-bg);
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   border: 1px solid var(--panel-border);
   border-radius: 14px;
   box-shadow: var(--shadow);
@@ -279,6 +301,11 @@ body {
 .agg-row:last-child { border-bottom: none; }
 .agg-row .n { color: var(--muted); white-space: nowrap; }
 
+.ai-key-notice {
+  font-size: 0.72rem; color: var(--muted); line-height: 1.5;
+  background: var(--chip-bg); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px;
+}
+.ai-key-notice a { color: var(--accent); }
 .ai-wrap { margin-bottom: 4px; }
 .ai-btn {
   background: var(--accent); color: #fff; border: none;
@@ -353,8 +380,10 @@ table.mini tr.row-sev-flagged { background: color-mix(in srgb, #dc2626 7%, trans
 .status-ok { color: var(--ok); font-size: 0.82rem; }
 
 .legend {
-  position: fixed; left: 16px; bottom: 16px;
-  background: var(--panel-bg); border: 1px solid var(--panel-border);
+  position: fixed; left: 16px; bottom: 158px;
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--panel-border);
   border-radius: 10px; padding: 10px 14px; box-shadow: var(--shadow);
   font-size: 0.78rem; z-index: 20;
 }
@@ -365,15 +394,20 @@ table.mini tr.row-sev-flagged { background: color-mix(in srgb, #dc2626 7%, trans
 .legend-dot.file { background: var(--file); }
 
 .credits {
-  position: fixed; left: 16px; bottom: 104px;
-  background: var(--panel-bg); border: 1px solid var(--panel-border);
-  border-radius: 10px; padding: 8px 14px; box-shadow: var(--shadow);
+  position: fixed; left: 16px; bottom: 16px;
+  background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px; padding: 8px 10px; box-shadow: var(--shadow);
   font-size: 0.74rem; color: var(--muted); z-index: 20;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; gap: 2px;
 }
-.credits a { color: var(--muted); text-decoration: none; }
-.credits a:hover { color: var(--accent); text-decoration: underline; }
-.credits-sep { color: var(--table-border); }
+.credits-row {
+  display: flex; align-items: center; gap: 7px;
+  color: var(--muted); text-decoration: none; padding: 3px 4px; border-radius: 6px;
+}
+.credits-row:hover { color: var(--accent); background: var(--chip-bg); }
+.credits-icon { width: 13px; height: 13px; flex-shrink: 0; }
 
 .loading {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -394,7 +428,9 @@ table.mini tr.row-sev-flagged { background: color-mix(in srgb, #dc2626 7%, trans
 .modal-overlay.hidden { display: none; }
 .modal {
   width: 420px; max-width: calc(100vw - 40px);
-  background: var(--panel-bg); border: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid var(--panel-border);
   border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
 }
 .modal-header {

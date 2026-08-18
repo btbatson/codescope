@@ -23,6 +23,7 @@ const { findDeadExports } = require('./deadCode');
 const { findDuplicateBlocks } = require('./duplicateCode');
 const { getCoverage } = require('./coverage');
 const { recordSnapshot } = require('./snapshots');
+const { cloneOrUpdateRepo } = require('./repoClone');
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -93,47 +94,83 @@ function openBrowser(url) {
   }
 }
 
-async function startServer(targetDirs, { port = 4488, open = true } = {}) {
-  const dirs = Array.isArray(targetDirs) ? targetDirs : [targetDirs];
-  const publicDir = path.join(__dirname, '..', 'public');
-
-  applyStoredApiKey();
-
-  const projects = dirs.map((targetDir, i) => ({
-    id: String(i),
-    name: path.basename(targetDir),
-    targetDir,
-    cache: null,
-  }));
-
-  for (const project of projects) {
-    console.log(`Scanning ${project.targetDir}`);
-    project.cache = await buildData(project.targetDir);
-  }
-
+function createHandler(projects, publicDir) {
   function getProject(url) {
+    if (!projects.length) return null;
     const id = url.searchParams.get('project') || projects[0].id;
     return projects.find((p) => p.id === id) || projects[0];
   }
 
-  const server = http.createServer((req, res) => {
+  return function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
 
     if (url.pathname === '/api/projects') {
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
-      res.end(JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name, path: p.targetDir }))));
+      res.end(JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name, path: p.targetDir, mode: p.mode || 'local' }))));
+      return;
+    }
+
+    if (url.pathname === '/api/projects/add' && req.method === 'POST') {
+      readJsonBody(req)
+        .then(async (body) => {
+          const repoUrl = (body.url || '').trim();
+          if (!repoUrl) {
+            res.writeHead(400, { 'Content-Type': MIME['.json'] });
+            res.end(JSON.stringify({ error: 'url is required' }));
+            return;
+          }
+          try {
+            const { path: clonedPath, name, mode } = await cloneOrUpdateRepo(repoUrl);
+            const existing = projects.find((p) => p.targetDir === clonedPath);
+            if (existing) {
+              existing.mode = mode;
+              existing.cache = await buildData(clonedPath, { silent: true });
+              res.writeHead(200, { 'Content-Type': MIME['.json'] });
+              res.end(JSON.stringify({ id: existing.id, name: existing.name, path: existing.targetDir, mode: existing.mode }));
+              return;
+            }
+            const project = { id: String(projects.length), name, targetDir: clonedPath, mode, cache: null };
+            project.cache = await buildData(clonedPath, { silent: true });
+            projects.push(project);
+            res.writeHead(200, { 'Content-Type': MIME['.json'] });
+            res.end(JSON.stringify({ id: project.id, name: project.name, path: project.targetDir, mode: project.mode }));
+          } catch (err) {
+            const status = err.code === 'INVALID_URL' || err.code === 'REPO_TOO_LARGE' ? 400 : 422;
+            res.writeHead(status, { 'Content-Type': MIME['.json'] });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        })
+        .catch(() => {
+          res.writeHead(400, { 'Content-Type': MIME['.json'] });
+          res.end(JSON.stringify({ error: 'Invalid request body' }));
+        });
       return;
     }
 
     if (url.pathname === '/api/data') {
       const project = getProject(url);
+      if (!project) {
+        res.writeHead(200, { 'Content-Type': MIME['.json'] });
+        res.end(JSON.stringify({ empty: true }));
+        return;
+      }
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
       res.end(JSON.stringify(project.cache));
       return;
     }
 
-    if (url.pathname === '/api/rescan' && req.method === 'POST') {
+    function requireProject() {
       const project = getProject(url);
+      if (!project) {
+        res.writeHead(404, { 'Content-Type': MIME['.json'] });
+        res.end(JSON.stringify({ error: 'No project selected yet - add a repository first.' }));
+      }
+      return project;
+    }
+
+    if (url.pathname === '/api/rescan' && req.method === 'POST') {
+      const project = requireProject();
+      if (!project) return;
       buildData(project.targetDir)
         .then((fresh) => {
           project.cache = fresh;
@@ -150,7 +187,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/summary') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const nodePath = url.searchParams.get('path') || project.cache.scanResult.tree.path;
       const node = findNode(project.cache.scanResult.tree, nodePath);
       if (!node) {
@@ -172,7 +210,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/filehistory') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const nodePath = url.searchParams.get('path');
       const node = findNode(project.cache.scanResult.tree, nodePath);
       if (!node || node.type !== 'file') {
@@ -189,7 +228,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/sbom') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const projectName = (project.cache.stack && project.cache.stack.name) || project.cache.scanResult.tree.name;
       const sbom = buildSbom(projectName, project.cache.licenses || {});
       res.writeHead(200, {
@@ -201,7 +241,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/complexity') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const result = analyzeComplexity(project.targetDir, project.cache.scanResult.tree);
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
       res.end(JSON.stringify(result));
@@ -209,7 +250,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/deadcode') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const result = findDeadExports(project.targetDir, project.cache.scanResult.tree);
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
       res.end(JSON.stringify(result));
@@ -217,7 +259,8 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
     }
 
     if (url.pathname === '/api/duplicates') {
-      const project = getProject(url);
+      const project = requireProject();
+      if (!project) return;
       const result = findDuplicateBlocks(project.targetDir, project.cache.scanResult.tree);
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
       res.end(JSON.stringify(result));
@@ -310,7 +353,30 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
       res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
       res.end(content);
     });
-  });
+  };
+}
+
+async function startServer(targetDirs, { port = 4488, open = true } = {}) {
+  const dirs = Array.isArray(targetDirs) ? targetDirs : [targetDirs];
+  const publicDir = path.join(__dirname, '..', 'public');
+
+  applyStoredApiKey();
+
+  const projects = dirs.map((targetDir, i) => ({
+    id: String(i),
+    name: path.basename(targetDir),
+    targetDir,
+    mode: 'local',
+    cache: null,
+  }));
+
+  for (const project of projects) {
+    console.log(`Scanning ${project.targetDir}`);
+    project.cache = await buildData(project.targetDir);
+  }
+
+  const handler = createHandler(projects, publicDir);
+  const server = http.createServer(handler);
 
   server.listen(port, () => {
     const url = `http://localhost:${port}`;
@@ -329,4 +395,4 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
   return server;
 }
 
-module.exports = { startServer };
+module.exports = { startServer, createHandler, buildData };
