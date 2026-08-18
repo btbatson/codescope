@@ -83,6 +83,10 @@ In that mode there's no `git` binary or persistent disk to rely on, so "add a re
 
 Nothing you scan leaves your machine unless you explicitly configure an Anthropic API key (for AI summaries) or a webhook URL (for vulnerability notifications). Local scans read files directly from disk; the hosted mode only ever touches the public repository you point it at.
 
+## Credits
+
+Built by [Titus Batson](https://batsonlabs.com/). If CodeScope is useful to you, consider [buying me a coffee](https://buymeacoffee.com/titusbatson).
+
 ## License
 
 MIT
