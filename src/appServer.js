@@ -204,7 +204,7 @@ function createHandler(projectsOrOptions, publicDir, { perSession = false } = {}
         return;
       }
       res.writeHead(200, { 'Content-Type': MIME['.json'] });
-      res.end(JSON.stringify(project.cache));
+      res.end(JSON.stringify({ ...project.cache, projectId: project.id }));
       return;
     }
 

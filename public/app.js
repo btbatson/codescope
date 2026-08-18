@@ -142,6 +142,7 @@
       showEmptyState();
       return;
     }
+    if (data.projectId != null) currentProjectId = String(data.projectId);
     const hint = document.getElementById('graphHint');
     if (hint) hint.textContent = 'Click a folder to explore. Click a file for details.';
     stack = [data.scanResult.tree];
@@ -203,8 +204,13 @@
     const res = await fetch('/api/projects');
     knownProjects = await res.json();
 
+    // Deliberately doesn't fall back to knownProjects[0] when nothing is
+    // selected yet - the hosted deployment relies on a bare /api/data
+    // request (no explicit id) coming back empty on a fresh page load, and
+    // pre-picking a project here would send that id explicitly and route
+    // around that. loadProjectData() below picks up whatever the server
+    // resolves on its own (e.g. the single local project for the CLI).
     if (selectId) currentProjectId = selectId;
-    else if (!currentProjectId && knownProjects.length) currentProjectId = knownProjects[0].id;
 
     projectSwitcherWrap.classList.toggle('hidden', knownProjects.length <= 1);
     renderProjectMenu();
@@ -222,6 +228,7 @@
   async function load() {
     await loadProjects();
     await loadProjectData();
+    renderProjectMenu(); // reflect whatever project loadProjectData() resolved us into
   }
 
   document.getElementById('rescanBtn').addEventListener('click', async () => {
