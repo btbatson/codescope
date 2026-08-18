@@ -171,7 +171,7 @@ body {
   top: 68px; left: 0; right: 420px; bottom: 0;
   overflow: hidden;
 }
-#graphSvg { display: block; cursor: grab; }
+#graphSvg { display: block; cursor: grab; touch-action: none; }
 #graphSvg.panning { cursor: grabbing; }
 
 .graph-hint {
@@ -560,3 +560,71 @@ table.mini tr.row-sev-flagged { background: color-mix(in srgb, #dc2626 7%, trans
 .vibe-output { margin-top: 12px; }
 .vibe-output.hidden { display: none; }
 .vibe-note { font-size: 0.74rem; color: var(--muted); padding: 8px 0; }
+
+/* A persistent handle that toggles the details sheet on phones - lives
+   outside #panel so it never moves when the panel's own transform slides
+   it off-screen (see .panel-collapse's off-screen-on-collapse behavior).
+   Desktop-only .panel-collapse chevron is hidden below and this takes over. */
+.panel-toggle-mobile {
+  display: none;
+  position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%);
+  z-index: 25;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--panel-border); border-radius: 999px;
+  padding: 8px 16px; font-size: 0.78rem; font-weight: 600; color: var(--text);
+  box-shadow: var(--shadow); cursor: pointer;
+}
+
+/* ---------- responsive layout (tablet / phone) ---------- */
+@media (max-width: 860px) {
+  #panel { width: 360px; }
+}
+
+@media (max-width: 780px) {
+  #topbar {
+    top: 8px; left: 8px; right: 8px;
+    height: auto; min-height: 50px;
+    flex-wrap: wrap; row-gap: 6px;
+    padding: 8px 10px; border-radius: 12px;
+  }
+  .topbar-left, .topbar-right { flex-wrap: wrap; gap: 6px; row-gap: 6px; }
+  .topbar-left { flex: 1 1 auto; min-width: 0; }
+  .breadcrumb { min-width: 0; overflow: hidden; }
+  .breadcrumb .brand { white-space: nowrap; }
+  .topbar-btn { font-size: 0.78rem; padding: 6px 8px; }
+  .search-wrap { order: 10; flex: 1 1 100%; }
+  .search-input { width: 100%; }
+  .search-results { width: 100%; max-width: none; }
+
+  #graphArea { top: 96px; right: 0; bottom: 0; left: 0; }
+  .graph-hint { bottom: 90px; padding: 0 16px; text-align: center; }
+
+  /* The side panel becomes a bottom sheet instead of sitting beside the
+     graph - there's no room for both on a phone-width screen. */
+  #panel {
+    top: auto; left: 8px; right: 8px; bottom: 52px;
+    width: auto; max-height: 62vh;
+    border-radius: 14px;
+  }
+  #panel.collapsed { transform: translateY(calc(100% + 60px)); }
+  .panel-collapse { display: none; } /* the fixed handle below replaces it */
+  .panel-toggle-mobile { display: block; }
+
+  .legend, .credits { display: none; } /* not enough room alongside the bottom sheet handle */
+
+  .modal { max-width: calc(100vw - 24px); }
+  .modal-body { padding: 14px; }
+  .modal-header { padding: 14px; }
+  .modal-wide { width: calc(100vw - 24px); }
+  .modal-scroll { max-height: 50vh; }
+
+  .sevgrid { grid-template-columns: repeat(2, 1fr); }
+  .lang-legend { grid-template-columns: 1fr; }
+  .hotfile-path { max-width: 160px; }
+}
+
+@media (max-width: 420px) {
+  .topbar-btn { font-size: 0.74rem; padding: 6px 7px; }
+  #appearanceLabel { display: none; } /* keep just "▾" - the caret alone is enough at this width */
+}

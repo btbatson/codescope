@@ -243,11 +243,23 @@
     render();
   });
 
-  document.getElementById('panelCollapse').addEventListener('click', () => {
+  const panelToggleMobile = document.getElementById('panelToggleMobile');
+  function togglePanelCollapsed() {
     panel.classList.toggle('collapsed');
-    const btn = document.getElementById('panelCollapse');
-    btn.innerHTML = panel.classList.contains('collapsed') ? '&lsaquo;' : '&rsaquo;';
-  });
+    const collapsed = panel.classList.contains('collapsed');
+    document.getElementById('panelCollapse').innerHTML = collapsed ? '&lsaquo;' : '&rsaquo;';
+    panelToggleMobile.innerHTML = collapsed ? 'Show details &#9650;' : 'Hide details &#9660;';
+  }
+  document.getElementById('panelCollapse').addEventListener('click', togglePanelCollapsed);
+  panelToggleMobile.addEventListener('click', togglePanelCollapsed);
+
+  // On phones, start with the graph in full view rather than the details
+  // sheet covering most of the screen - people can tap "Show details" once
+  // they've picked something to look at.
+  if (window.matchMedia('(max-width: 780px)').matches) {
+    panel.classList.add('collapsed');
+    panelToggleMobile.innerHTML = 'Show details &#9650;';
+  }
 
   // ---------- settings modal ----------
   const settingsModal = document.getElementById('settingsModal');
@@ -752,6 +764,12 @@
 
   function handleNodeClick(n) {
     switchToDetailsTab();
+    // On phones the details sheet starts collapsed so the graph has the
+    // full screen - picking a node is a clear signal the user wants to see
+    // its details now, so pop the sheet open for them.
+    if (window.matchMedia('(max-width: 780px)').matches && panel.classList.contains('collapsed')) {
+      togglePanelCollapsed();
+    }
 
     if (n.isCenter) {
       if (stack.length > 1) {
@@ -801,20 +819,62 @@
     applyTransform();
   }, { passive: false });
 
-  svg.addEventListener('mousedown', (e) => {
-    dragging = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
-    svg.classList.add('panning');
+  // Pointer Events cover mouse, touch, and pen through one API, so a single
+  // finger drags the canvas the same way a mouse does, and a second finger
+  // pinches to zoom - touch never had any handling before this.
+  const activePointers = new Map();
+  let pinchStartDist = null;
+  let pinchStartZoom = 1;
+
+  function pointerDistance() {
+    const pts = [...activePointers.values()];
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+
+  svg.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    svg.setPointerCapture(e.pointerId);
+    if (activePointers.size === 1) {
+      dragging = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+      svg.classList.add('panning');
+    } else if (activePointers.size === 2) {
+      dragging = null;
+      svg.classList.remove('panning');
+      pinchStartDist = pointerDistance();
+      pinchStartZoom = zoom;
+    }
   });
-  window.addEventListener('mousemove', (e) => {
+
+  svg.addEventListener('pointermove', (e) => {
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 2 && pinchStartDist) {
+      zoom = Math.max(0.4, Math.min(2.5, pinchStartZoom * (pointerDistance() / pinchStartDist)));
+      applyTransform();
+      return;
+    }
+
     if (!dragging) return;
     pan.x = dragging.px + (e.clientX - dragging.x);
     pan.y = dragging.py + (e.clientY - dragging.y);
     applyTransform();
   });
-  window.addEventListener('mouseup', () => {
-    dragging = null;
-    svg.classList.remove('panning');
-  });
+
+  function endPointer(e) {
+    activePointers.delete(e.pointerId);
+    pinchStartDist = null;
+    if (activePointers.size === 0) {
+      dragging = null;
+      svg.classList.remove('panning');
+    } else {
+      const [remaining] = activePointers.values();
+      dragging = { x: remaining.x, y: remaining.y, px: pan.x, py: pan.y };
+    }
+  }
+  svg.addEventListener('pointerup', endPointer);
+  svg.addEventListener('pointercancel', endPointer);
 
   window.addEventListener('resize', () => render());
 
