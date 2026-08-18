@@ -84,14 +84,34 @@
         <button id="addRepoClose" class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">
-          Paste a git repository URL (GitHub, GitLab, or any git remote) and CodeScope scans it just like a local project - no need to clone it yourself first. When a local <code>git</code> binary isn't available (e.g. this hosted demo), github.com repos are fetched live through GitHub's API instead, with no clone at all.
-        </p>
-        <div id="addRepoStatus" class="settings-status"></div>
-        <label class="modal-label" for="addRepoInput">Repository URL</label>
-        <input id="addRepoInput" class="modal-input" type="text" placeholder="https://github.com/owner/repo">
-        <div class="modal-actions">
-          <button id="addRepoSubmit" class="ai-btn">Clone &amp; analyze</button>
+        <div class="panel-tabs">
+          <button class="tab-btn active" data-addrepo-tab="github">Analyze from GitHub</button>
+          <button class="tab-btn" data-addrepo-tab="local">Run on your device</button>
+        </div>
+
+        <div id="addRepoTabGithub" class="tab-pane active">
+          <p class="modal-desc">
+            Paste a git repository URL (GitHub, GitLab, or any git remote) and CodeScope scans it just like a local project - no need to clone it yourself first. When a local <code>git</code> binary isn't available (e.g. this hosted demo), github.com repos are fetched live through GitHub's API instead, with no clone at all.
+          </p>
+          <div id="addRepoStatus" class="settings-status"></div>
+          <label class="modal-label" for="addRepoInput">Repository URL</label>
+          <input id="addRepoInput" class="modal-input" type="text" placeholder="https://github.com/owner/repo">
+          <div class="modal-actions">
+            <button id="addRepoSubmit" class="ai-btn">Just analyse</button>
+          </div>
+        </div>
+
+        <div id="addRepoTabLocal" class="tab-pane">
+          <p class="modal-desc">
+            Prefer to run CodeScope on your own machine? It works from the terminal - your files are scanned directly from disk, nothing is uploaded anywhere. Get it from GitHub:
+          </p>
+          <pre class="modal-code">git clone https://github.com/btbatson/codescope.git
+cd codescope
+npm install
+node bin/codescope.js /path/to/your/project</pre>
+          <p class="modal-desc">
+            That opens a local dashboard at <code>http://localhost:4488</code>. Run <code>npm install -g .</code> once and you can use the <code>codescope</code> command from any directory instead.
+          </p>
         </div>
       </div>
     </div>

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# CodeScope's own local state (API keys, cloned repos, scan snapshots)
+.codescope/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel/

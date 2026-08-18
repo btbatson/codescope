@@ -163,6 +163,8 @@
     }
     const addRepoModal = document.getElementById('addRepoModal');
     if (addRepoModal) addRepoModal.classList.remove('hidden');
+    const modalTitle = document.querySelector('#addRepoModal .modal-title');
+    if (modalTitle) modalTitle.textContent = 'Welcome to CodeScope';
   }
 
   // ---------- project switcher ----------
@@ -1857,11 +1859,24 @@
   const addRepoStatus = document.getElementById('addRepoStatus');
   const addRepoSubmit = document.getElementById('addRepoSubmit');
 
+  const addRepoTabButtons = addRepoModal.querySelectorAll('[data-addrepo-tab]');
+  function setAddRepoTab(tabName) {
+    addRepoTabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.addrepoTab === tabName));
+    document.getElementById('addRepoTabGithub').classList.toggle('active', tabName === 'github');
+    document.getElementById('addRepoTabLocal').classList.toggle('active', tabName === 'local');
+  }
+  addRepoTabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setAddRepoTab(btn.dataset.addrepoTab));
+  });
+
   document.getElementById('addRepoBtn').addEventListener('click', () => {
     addRepoModal.classList.remove('hidden');
     addRepoInput.value = '';
     addRepoStatus.textContent = '';
     addRepoStatus.className = 'settings-status';
+    setAddRepoTab('github');
+    const modalTitle = addRepoModal.querySelector('.modal-title');
+    if (modalTitle) modalTitle.textContent = 'Add Repository';
     addRepoInput.focus();
   });
   document.getElementById('addRepoClose').addEventListener('click', () => {
@@ -1875,7 +1890,7 @@
     const repoUrl = addRepoInput.value.trim();
     if (!repoUrl) return;
     addRepoSubmit.disabled = true;
-    addRepoSubmit.textContent = 'Cloning…';
+    addRepoSubmit.textContent = 'Analysing…';
     addRepoStatus.textContent = 'Cloning and scanning - this can take a moment for larger repos.';
     addRepoStatus.className = 'settings-status';
     try {
@@ -1899,7 +1914,7 @@
       addRepoStatus.className = 'settings-status error';
     }
     addRepoSubmit.disabled = false;
-    addRepoSubmit.textContent = 'Clone & analyze';
+    addRepoSubmit.textContent = 'Just analyse';
   });
 
   function buildSecurityReportText(label, eco) {
