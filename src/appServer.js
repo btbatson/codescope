@@ -395,18 +395,18 @@ async function startServer(targetDirs, { port = 4488, open = true } = {}) {
   return server;
 }
 
-// Vercel's build has been observed resolving this shared module as if it
-// were a function's own entry point, rather than a dependency required by
-// api/index.js - when that happens, Vercel's platform-level validation
-// rejects it before any app code runs unless its export "is a function or
-// server". Exporting a callable (with the real API attached as properties -
-// functions are objects too) keeps `require('./server')` working exactly as
-// before for bin/codescope.js and api/index.js, while also surviving being
-// invoked directly instead of hard-crashing the deployment.
+// Vercel's build was observed auto-detecting a file literally named
+// server.js anywhere in the repo as an implicit function entry point, by
+// naming convention, independent of api/index.js - this file was renamed to
+// appServer.js to avoid that collision. Exporting a callable here too (with
+// the real API attached as properties - functions are objects too) is a
+// second, cheap line of defense: it keeps `require('./appServer')` working
+// exactly as before for bin/codescope.js and api/index.js, while also
+// surviving being invoked directly instead of hard-crashing the deployment.
 function serverModule(req, res) {
   res.statusCode = 404;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('src/server.js is a shared module, not a deployable entry point - see api/index.js.');
+  res.end('src/appServer.js is a shared module, not a deployable entry point - see api/index.js.');
 }
 serverModule.startServer = startServer;
 serverModule.createHandler = createHandler;

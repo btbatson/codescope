@@ -8,7 +8,7 @@ const path = require('path');
 let handler;
 let bootError;
 try {
-  const { createHandler } = require('../src/server');
+  const { createHandler } = require('../src/appServer');
   const { applyStoredApiKey } = require('../src/config');
 
   applyStoredApiKey();
